@@ -4,6 +4,7 @@ import (
         "fmt"
         "math"
         "math/rand"
+        "C"
         "time"
         "strconv"
     )
@@ -53,9 +54,11 @@ func createTableRecursion(createTableStatement *string, currLevel int, nestednes
     }
 }
 
-func getCreateTableStatement(numColumns int, nestedness int) {
-    var createTableStatement string = "CREATE TABLE TABLE1 (\n"
+// export getCreateTableStatement
+func GetCreateTableStatement(numColumns int, nestedness int, currTime int64, createTable bool) string {
+    rand.Seed(currTime)
 
+    var createTableStatement string = "CREATE TABLE TABLE1 ( "
     var columnNameVec []string
 
     var base int = int (math.Round( float64((30/100) * numColumns) ))
@@ -90,23 +93,26 @@ func getCreateTableStatement(numColumns int, nestedness int) {
         }
         if i < numColumns-1 {
             createTableStatement += " , "
-            createTableStatement += "\n"
         }
     }
-    createTableStatement += " ) \n"
+    createTableStatement += " ) "
 
-    fmt.Println( "Create Table Statement:" + createTableStatement )
-
-    var alterTableStatement string = "ALTER TABLE TABLE1 ADD DATASOURCE AS TABLE1_PARQUET PARQUET (\n"
-    for i:=0; i < len(columnNameVec); i++ {
-        alterTableStatement += columnNameVec[i] + " FROM COLUMN " + columnNameVec[i]
-        if i < len(columnNameVec)-1 {
-            alterTableStatement += ","
-            alterTableStatement += "\n"
+    if createTable {
+        fmt.Println( createTableStatement )
+        return createTableStatement
+    } else {
+        var alterTableStatement string = "ALTER TABLE TABLE1 ADD DATASOURCE AS TABLE1_PARQUET(\n"
+        for i:=0; i < len(columnNameVec); i++ {
+            alterTableStatement += columnNameVec[i] + " FROM COLUMN " + columnNameVec[i]
+            if i < len(columnNameVec)-1 {
+                alterTableStatement += ","
+                alterTableStatement += "\n"
+            }
         }
+        alterTableStatement += " ) PARQUET ('no_verify=true&hdlfs:///shared/region.parquet') ENCODING 'UTF_8'";
+        fmt.Println( alterTableStatement )
+        return alterTableStatement
     }
-    alterTableStatement += "\n)"
-    fmt.Println( alterTableStatement )
 }
 
 func main() {
@@ -116,6 +122,7 @@ func main() {
     fmt.Scan(&numColumns)
     fmt.Print("Number of Nestedness:")
     fmt.Scan(&nestedness)
-    rand.Seed(time.Now().UTC().UnixNano())
-    getCreateTableStatement(numColumns,nestedness)
+    currTime := time.Now().UTC().UnixNano()
+    GetCreateTableStatement(numColumns,nestedness,currTime,true)
+    GetCreateTableStatement(numColumns,nestedness,currTime,false)
 }
